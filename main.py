@@ -153,6 +153,11 @@ class Player():
             if self.rect.colliderect(saw[1]):
                 self.hit = True
                 self.hit_timer = 120
+        #collision with enemy
+        for enemy in world.enemy_list:
+            if self.rect.colliderect(enemy.img_rect):
+                self.hit = True
+                self.hit_timer = 120
 
         #Timer for hit sprites
         if self.hit and self.hit_timer <= 0:
@@ -212,6 +217,38 @@ class Moving_Platform():
         screen.blit(self.img ,self.img_rect)
         #pygame.draw.rect(screen, (255, 255, 255), self.img_rect, 1)
 
+class Enemy():
+    ENEMIES_SPRITES = load_sprites("Enemies","Slime",44,True)
+    sprite = ENEMIES_SPRITES["Run_left"]
+    ANIMATION_DELAY = 6
+    def __init__(self,x,y,move_x,block_num):
+        self.img = self.ENEMIES_SPRITES["Run_right"][0]
+        self.img_rect = pygame.Rect(x,y+20,50,50)
+        self.move_x = move_x
+        self.count_distance = 0
+        self.animation_count = 0
+        self.block_num = block_num
+    def move_enemy(self):
+        if self.count_distance < 64 * self.block_num:
+            self.img_rect.x += self.move_x
+            self.count_distance +=1
+        else:
+            self.move_x *= -1
+            self.count_distance = 0
+    def handle_sprites(self):
+        if self.move_x>=0:
+            self.sprite = self.ENEMIES_SPRITES["Run_left"]
+        else:
+            self.sprite = self.ENEMIES_SPRITES["Run_right"]
+    def draw(self):
+        self.move_enemy()
+        self.handle_sprites()
+        sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(self.ENEMIES_SPRITES["Run_right"])
+        self.img = self.sprite[sprite_index]
+        self.animation_count += 1
+        screen.blit(self.img ,self.img_rect)
+        #pygame.draw.rect(screen, (255, 255, 255), self.img_rect, 1)
+
 class World():
     SAW_SPRITES = load_sprites("Traps","Saw",38,False)
     ANIMATION_DELAY = 7
@@ -223,6 +260,7 @@ class World():
         self.tile_list = []
         self.saw_list = []
         self.plat_list = []
+        self.enemy_list = []
         self.animation_count = 0
         for i,row  in enumerate(data):
             for j,col in enumerate(row):
@@ -257,6 +295,9 @@ class World():
                     #moving platform in x and y directions
                     plat = Moving_Platform(j * 64 , i * 64 ,1,1, 2)
                     self.plat_list.append(plat)
+                if col == 8:
+                    enemy = Enemy(j * 64 , i * 64 ,1 , 2)
+                    self.enemy_list.append(enemy)
 
     def draw(self):
         sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(self.saw_images)
@@ -273,14 +314,16 @@ class World():
             #pygame.draw.rect(screen, (255, 255, 255), saw[1], 1) 
         for plat in self.plat_list:
             plat.draw()
+        for enemy in self.enemy_list:
+            enemy.draw()
 
 world_data =[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
              [0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0, 1],
              [0,0,0,0,1,1,0,3,1,1,1,4,0,0,1,1, 1],
              [0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0, 1],
-             [0,1,0,0,0,0,0,4,0,0,0,0,0,0,0,0, 1],
-             [0,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
-             [0,2,2,1,3,0,1,1,1,6,0,0,0,0,0,0, 1],
+             [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
+             [0,2,1,0,0,0,8,0,0,0,0,0,0,0,0,0, 1],
+             [0,2,2,1,3,0,1,1,1,0,0,0,0,0,0,0, 1],
              [0,0,0,0,0,0,0,0,0,0,0,1,7,0,3,3, 1],
              [0,0,0,0,0,0,0,0,0,0,1,2,0,0,0,0, 1],
              [1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,1, 1]]
