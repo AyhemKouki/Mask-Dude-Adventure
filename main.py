@@ -5,6 +5,9 @@ from os.path import join ,isfile
 WIDTH ,HEIGHT = 1024 , 640
 FPS = 120
 
+pygame.font.init()
+font = pygame.font.SysFont(None, 40)
+
 clock = pygame.time.Clock()
 pygame.display.set_caption("Mask Dude Adventure")
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -49,6 +52,7 @@ class Player():
     GRAVITY = 0.1 
     MAX_FALL_SPEED = 3 
     def __init__(self , x ,y):
+        self.score_img = Fruit.FRUIT_SPRITES["Apple"][0]
         self.rect = pygame.Rect(x,y,64,64)
         self.animation_count = 0
         self.direction = "right"
@@ -56,6 +60,9 @@ class Player():
         self.dy= 0
         self.hit = False
         self.hit_timer = 0
+        self.score = 0
+        self.score_message = font.render(f"{self.score}", True, (255,255,255))
+        self.score_message_rect = self.score_message.get_rect(center=(60, 32))
 
     def handle_sprites(self, x_vel , y_vel):
         if self.hit and self.hit_timer > 0:
@@ -158,6 +165,12 @@ class Player():
             if self.rect.colliderect(enemy.img_rect):
                 self.hit = True
                 self.hit_timer = 120
+        #collision with fruits
+        for fruit in world.fruit_list:
+            if self.rect.colliderect(fruit.img_rect):
+                self.score += 1
+                world.fruit_list.remove(fruit)
+                self.score_message = font.render(f"{self.score}", True, (255,255,255))
 
         #Timer for hit sprites
         if self.hit and self.hit_timer <= 0:
@@ -173,6 +186,8 @@ class Player():
 
     def draw_player(self):
         screen.blit(self.sprite, self.rect)
+        screen.blit(self.score_img, (0,0))
+        screen.blit(self.score_message , self.score_message_rect)
         #draw rect arround the player:
         #pygame.draw.rect(screen, (255, 0, 0), self.rect, 2)
 
@@ -248,6 +263,21 @@ class Enemy():
         self.animation_count += 1
         screen.blit(self.img ,self.img_rect)
         #pygame.draw.rect(screen, (255, 255, 255), self.img_rect, 1)
+        
+class Fruit:
+    FRUIT_SPRITES = load_sprites("items","Fruits",32,False)
+    sprite = FRUIT_SPRITES["Apple"]
+    ANIMATION_DELAY = 6
+    def __init__(self,x,y):
+        self.img = self.FRUIT_SPRITES["Apple"][0]
+        self.img_rect = pygame.Rect(x,y,32,32)
+        self.animation_count = 0
+    def draw(self):
+        sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(self.FRUIT_SPRITES["Apple"])
+        self.img = self.sprite[sprite_index]
+        self.animation_count += 1
+        screen.blit(self.img ,(self.img_rect.x - 16 , self.img_rect.y -16))
+        #pygame.draw.rect(screen, (255, 255, 255), self.img_rect, 1)
 
 class World():
     SAW_SPRITES = load_sprites("Traps","Saw",38,False)
@@ -261,6 +291,7 @@ class World():
         self.saw_list = []
         self.plat_list = []
         self.enemy_list = []
+        self.fruit_list = []
         self.animation_count = 0
         for i,row  in enumerate(data):
             for j,col in enumerate(row):
@@ -298,6 +329,9 @@ class World():
                 if col == 8:
                     enemy = Enemy(j * 64 , i * 64 ,1 , 2)
                     self.enemy_list.append(enemy)
+                if col == 9:
+                    fruit = Fruit(j * 64 , i * 64)
+                    self.fruit_list.append(fruit)
 
     def draw(self):
         sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(self.saw_images)
@@ -316,16 +350,18 @@ class World():
             plat.draw()
         for enemy in self.enemy_list:
             enemy.draw()
+        for fruit in self.fruit_list:
+            fruit.draw()
 
 world_data =[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
-             [0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0, 1],
-             [0,0,0,0,1,1,0,3,1,1,1,4,0,0,1,1, 1],
-             [0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0, 1],
+             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
+             [0,0,0,0,1,1,0,0,1,1,1,0,0,0,1,1, 1],
+             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
              [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
-             [0,2,1,0,0,0,8,0,0,0,0,0,0,0,0,0, 1],
-             [0,2,2,1,3,0,1,1,1,0,0,0,0,0,0,0, 1],
-             [0,0,0,0,0,0,0,0,0,0,0,1,7,0,3,3, 1],
-             [0,0,0,0,0,0,0,0,0,0,1,2,0,0,0,0, 1],
+             [9,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
+             [0,2,2,1,0,0,1,1,1,0,0,0,0,0,0,0, 1],
+             [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0, 1],
+             [0,0,0,0,0,0,9,0,0,0,1,2,0,0,9,9, 1],
              [1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,1, 1]]
 
 player = Player(50 , HEIGHT - 64)
