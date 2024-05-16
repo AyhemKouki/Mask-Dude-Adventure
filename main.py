@@ -1,6 +1,7 @@
 import pygame , sys
 from os import listdir
 from os.path import join ,isfile
+from Levels import all_levels
 
 WIDTH ,HEIGHT = 1024 , 640
 FPS = 120
@@ -63,6 +64,7 @@ class Player():
         self.score = 0
         self.score_message = font.render(f"{self.score}", True, (255,255,255))
         self.score_message_rect = self.score_message.get_rect(center=(60, 32))
+        self.level_counter = 1
 
     def handle_sprites(self, x_vel , y_vel):
         if self.hit and self.hit_timer > 0:
@@ -171,6 +173,16 @@ class Player():
                 self.score += 1
                 world.fruit_list.remove(fruit)
                 self.score_message = font.render(f"{self.score}", True, (255,255,255))
+        
+        if self.win_round():
+            world.checkpoint_list.clear()
+            world.tile_list.clear()
+            world.enemy_list.clear()
+            world.fruit_list.clear()
+            world.plat_list.clear()
+            world.saw_list.clear()
+            self.level_counter +=1
+            world.build_world(all_levels[self.level_counter])
 
         #Timer for hit sprites
         if self.hit and self.hit_timer <= 0:
@@ -183,6 +195,12 @@ class Player():
         #move the player
         self.rect.x += x_vel
         self.rect.y += y_vel
+
+    def win_round(self):
+        for checkpoint in world.checkpoint_list:
+            if self.rect.colliderect(checkpoint.img_rect):
+                return True
+        return False
 
     def draw_player(self):
         screen.blit(self.sprite, self.rect)
@@ -279,12 +297,27 @@ class Fruit:
         screen.blit(self.img ,(self.img_rect.x - 16 , self.img_rect.y -16))
         #pygame.draw.rect(screen, (255, 255, 255), self.img_rect, 1)
 
+class Checkpoint:
+    CHECK_POINT_SPRITES = load_sprites("items","Checkpoint",64,False)
+    sprite = CHECK_POINT_SPRITES["Checkpoint"]
+    ANIMATION_DELAY = 6
+    def __init__(self , x, y):
+        self.img = self.CHECK_POINT_SPRITES["Checkpoint"][0]
+        self.img_rect = pygame.Rect(x,y+16,32,48)
+        self.animation_count = 0
+    def draw(self):
+        sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(self.CHECK_POINT_SPRITES["Checkpoint"])
+        self.img = self.sprite[sprite_index]
+        self.animation_count += 1
+        screen.blit(self.img ,(self.img_rect.x - 16 , self.img_rect.y - 16))
+        #pygame.draw.rect(screen, (255, 255, 255), self.img_rect, 1)
+
 class World():
     SAW_SPRITES = load_sprites("Traps","Saw",38,False)
     ANIMATION_DELAY = 7
     def __init__(self , data):
-        block_image = pygame.image.load("assets/Terrain/terrain.png").convert_alpha()
-        dirt_image = pygame.image.load("assets/Terrain/dirt.png").convert_alpha()
+        self.block_image = pygame.image.load("assets/Terrain/terrain.png").convert_alpha()
+        self.dirt_image = pygame.image.load("assets/Terrain/dirt.png").convert_alpha()
         self.sprite = self.SAW_SPRITES["Off"][0]
         self.saw_images = self.SAW_SPRITES["On"]
         self.tile_list = []
@@ -292,14 +325,17 @@ class World():
         self.plat_list = []
         self.enemy_list = []
         self.fruit_list = []
+        self.checkpoint_list = []
         self.animation_count = 0
+        self.build_world(data)
+    def build_world(self, data):
         for i,row  in enumerate(data):
             for j,col in enumerate(row):
                 if col in [1 , 2] :
                     if col == 1 :
-                        img = pygame.transform.scale(block_image,(64,64))
+                        img = pygame.transform.scale(self.block_image,(64,64))
                     else:
-                        img = pygame.transform.scale(dirt_image,(64,64))
+                        img = pygame.transform.scale(self.dirt_image,(64,64))
                     img_rect = img.get_rect()
                     img_rect.topleft = ( j * 64 , i * 64)
                     img_rect.width = 54
@@ -332,6 +368,9 @@ class World():
                 if col == 9:
                     fruit = Fruit(j * 64 , i * 64)
                     self.fruit_list.append(fruit)
+                if col == 10:
+                    checkpoint = Checkpoint(j * 64 , i * 64)
+                    self.checkpoint_list.append(checkpoint)
 
     def draw(self):
         sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(self.saw_images)
@@ -352,9 +391,11 @@ class World():
             enemy.draw()
         for fruit in self.fruit_list:
             fruit.draw()
+        for checkpoint in self.checkpoint_list:
+            checkpoint.draw()
 
 world_data =[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
-             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
+             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10, 1],
              [0,0,0,0,1,1,0,0,1,1,1,0,0,0,1,1, 1],
              [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
              [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
