@@ -288,7 +288,7 @@ class Fruit:
     ANIMATION_DELAY = 6
     def __init__(self,x,y):
         self.img = self.FRUIT_SPRITES["Apple"][0]
-        self.img_rect = pygame.Rect(x,y,32,32)
+        self.img_rect = pygame.Rect(x+15,y+20,32,32)
         self.animation_count = 0
     def draw(self):
         sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(self.FRUIT_SPRITES["Apple"])
@@ -360,7 +360,7 @@ class World():
                     self.plat_list.append(plat)
                 if col == 7:
                     #moving platform in x and y directions
-                    plat = Moving_Platform(j * 64 , i * 64 ,1,1, 2)
+                    plat = Moving_Platform(j * 64 , i * 64 ,1,1, 3)
                     self.plat_list.append(plat)
                 if col == 8:
                     enemy = Enemy(j * 64 , i * 64 ,1 , 2)
@@ -387,27 +387,46 @@ class World():
             #pygame.draw.rect(screen, (255, 255, 255), saw[1], 1) 
         for plat in self.plat_list:
             plat.draw()
-        for enemy in self.enemy_list:
-            enemy.draw()
         for fruit in self.fruit_list:
             fruit.draw()
+        for enemy in self.enemy_list:
+            enemy.draw()
         for checkpoint in self.checkpoint_list:
             checkpoint.draw()
 
 world_data =[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
              [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10, 1],
-             [0,0,0,0,1,1,0,0,1,1,1,0,0,0,1,1, 1],
-             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
+             [0,0,0,0,1,1,0,4,1,1,1,0,0,4,1,1, 1],
+             [0,9,0,0,0,0,9,0,0,0,0,0,0,0,0,0, 1],
              [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
              [9,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
              [0,2,2,1,0,0,1,1,1,0,0,0,0,0,0,0, 1],
-             [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0, 1],
+             [0,0,0,0,0,0,0,0,0,0,0,1,0,0,4,4, 1],
              [0,0,0,0,0,0,9,0,0,0,1,2,0,0,9,9, 1],
              [1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,1, 1]]
 
 player = Player(50 , HEIGHT - 64)
 trap_group = pygame.sprite.Group()
 world = World(world_data)
+def main_menu():
+    title_img = pygame.image.load("assets/items/title.png").convert_alpha()
+    title_img = pygame.transform.scale(title_img ,(1000,400))
+    title_rect = title_img.get_rect()
+    title_rect.centerx = WIDTH //2 + 20
+    loop = True
+    while loop:
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    loop = False
+                    run()
+        draw_background()
+        screen.blit(title_img,title_rect)
+        pygame.display.update()
 def run():
     while True:
         clock.tick(FPS)
@@ -427,4 +446,4 @@ def run():
         player.draw_player()
         pygame.display.update()
 if __name__ == "__main__":
-    run()
+    main_menu()
