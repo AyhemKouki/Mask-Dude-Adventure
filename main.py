@@ -4,7 +4,7 @@ from os.path import join ,isfile
 from Levels import all_levels
 
 WIDTH ,HEIGHT = 1024 , 640
-FPS = 120
+FPS = 60
 
 pygame.font.init()
 font = pygame.font.SysFont(None, 40)
@@ -47,11 +47,33 @@ def draw_background():
     for position in positions:
         screen.blit(back_image , position)
 
+class Button:
+    def __init__(self, image, position):
+        self.image = image
+        self.rect = self.image.get_rect(topleft=position)
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
+
+    def is_clicked(self, mouse_pos):
+        #check if left mouse button is clicked on button
+        return self.rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0] == 1
+
+class Heart:
+    def __init__(self , x , y):
+        self.heart_img = pygame.transform.scale2x(pygame.image.load("assets/items/heart.png").convert_alpha())
+        self.rect = self.heart_img.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+    def draw(self):
+        screen.blit(self.heart_img , self.rect)
+
+
 class Player():
     SPRITES = load_sprites("Main Characters","Mask Dude",32,True)
-    ANIMATION_DELAY = 5
-    GRAVITY = 0.1 
-    MAX_FALL_SPEED = 3 
+    ANIMATION_DELAY = 3
+    GRAVITY = 0.3 
+    MAX_FALL_SPEED = 6
     def __init__(self , x ,y):
         self.score_img = Fruit.FRUIT_SPRITES["Apple"][0]
         self.rect = pygame.Rect(x,y,64,64)
@@ -59,12 +81,14 @@ class Player():
         self.direction = "right"
         self.jump_count = 0
         self.dy= 0
+        self.lives = 3
         self.hit = False
         self.hit_timer = 0
         self.score = 0
         self.score_message = font.render(f"{self.score}", True, (255,255,255))
-        self.score_message_rect = self.score_message.get_rect(center=(60, 32))
+        self.score_message_rect = self.score_message.get_rect(center=(60, 64))
         self.level_counter = 1
+        self.hearts_list = [Heart(17,10),Heart(57,10),Heart(97,10)]
 
     def handle_sprites(self, x_vel , y_vel):
         if self.hit and self.hit_timer > 0:
@@ -84,9 +108,9 @@ class Player():
             images = self.SPRITES["idle_right"]
         elif x_vel == 0 and self.direction == "left":
             images = self.SPRITES["idle_left"]
-        elif x_vel == 2 :
+        elif x_vel == 4 :
             images = self.SPRITES["Run_right"]
-        elif x_vel == -2:
+        elif x_vel == -4:
             images = self.SPRITES["Run_left"]
         elif y_vel == 0 and  self.direction == "right":
             images = self.SPRITES["idle_right"]
@@ -108,13 +132,13 @@ class Player():
         press = pygame.key.get_pressed()
         if press[pygame.K_d]:
             self.direction = "right"
-            x_vel= 2
+            x_vel= 4
         elif press[pygame.K_q]:
             self.direction = "left"
-            x_vel = -2
+            x_vel = -4
         if press[pygame.K_SPACE] and self.jump_count == 0:
             self.jump_count = 1
-            self.dy = -5.2
+            self.dy = -9
 
         #GRAVITY   
         self.dy += self.GRAVITY
@@ -140,33 +164,31 @@ class Player():
                 x_vel = 0
             if plat.img_rect.colliderect(self.rect.x , self.rect.y + y_vel , 60 ,64):
                 if y_vel >= 0 :
-                    #we have to check first if we are above the platformer, max y_vel when falling = 3 so max diff = 4 because platformer is moving up by 1 pixel
-                    if abs((self.rect.bottom + y_vel)-plat.img_rect.top)<= 4 :
+                    #we have to check first if we are above the platformer, max y_vel when falling = 6 so max diff = 7 because platformer is moving up by 2 pixel
+                    if abs((self.rect.bottom + y_vel)-plat.img_rect.top)<= 8 :
                         #diminuer 1 pixel pour ne pas activer la condition de x_vel = 0
-                        self.rect.bottom = plat.img_rect.top - 1
+                        self.rect.bottom = plat.img_rect.top - 2
                         y_vel = 0 
                         self.jump_count = 0
                         if x_vel == 0:
                             x_vel = plat.move_x
-                #consider that y_vel= -5.2 and platformer height=19 so max diff between them will be 14
+                #consider that y_vel= -9 and platformer height=19 so max diff between them will be 11
                 elif y_vel < 0 :
-                    if abs((self.rect.top + y_vel)-plat.img_rect.bottom)< 14.2:
+                    if abs((self.rect.top + y_vel)-plat.img_rect.bottom)< 11:
                         self.dy = 0
                         y_vel = plat.img_rect.bottom - self.rect.top  
         #check collision with spike balls
         if pygame.sprite.spritecollide(self,trap_group,False):
-            self.hit = True
-            self.hit_timer = 120    
+            self.handle_hit()
         #collision with saws
         for saw in world.saw_list:
-            if self.rect.colliderect(saw[1]):
-                self.hit = True
-                self.hit_timer = 120
+            if self.rect.colliderect(saw[1]) and self.hit== False:
+                self.handle_hit()
+                
         #collision with enemy
         for enemy in world.enemy_list:
             if self.rect.colliderect(enemy.img_rect):
-                self.hit = True
-                self.hit_timer = 120
+                self.handle_hit()
         #collision with fruits
         for fruit in world.fruit_list:
             if self.rect.colliderect(fruit.img_rect):
@@ -195,6 +217,16 @@ class Player():
         #move the player
         self.rect.x += x_vel
         self.rect.y += y_vel
+    
+    def handle_hit(self):
+        if not self.hit:
+            self.lives -= 1
+            if self.lives > 0:
+                self.hearts_list.pop()
+            else:
+                print("lost")
+            self.hit = True
+            self.hit_timer = 120
 
     def win_round(self):
         for checkpoint in world.checkpoint_list:
@@ -203,8 +235,10 @@ class Player():
         return False
 
     def draw_player(self):
+        for heart in self.hearts_list:
+            heart.draw()
         screen.blit(self.sprite, self.rect)
-        screen.blit(self.score_img, (0,0))
+        screen.blit(self.score_img, (4,32))
         screen.blit(self.score_message , self.score_message_rect)
         #draw rect arround the player:
         #pygame.draw.rect(screen, (255, 0, 0), self.rect, 2)
@@ -220,14 +254,11 @@ class Trap(pygame.sprite.Sprite):
 
 class Moving_Platform():
     SPRITES_PLAT = load_sprites("Traps","Falling Platforms" ,32 , False)
-    ANIMATION_DELAY = 17
+    ANIMATION_DELAY = 10
     sprite = SPRITES_PLAT["On"]
     def __init__(self,x,y,move_x , move_y,block_num):
         self.img = self.SPRITES_PLAT["Off"][0]
-        self.img_rect = self.img.get_rect()
-        self.img_rect.height = 19
-        self.img_rect.x = x
-        self.img_rect.y = y
+        self.img_rect = pygame.Rect(x,y,64,19)
         self.move_x = move_x
         self.move_y = move_y
         self.count_distance = 0
@@ -237,7 +268,7 @@ class Moving_Platform():
         if self.count_distance < 64 * self.block_num:
             self.img_rect.x += self.move_x
             self.img_rect.y -= self.move_y
-            self.count_distance +=1
+            self.count_distance +=2
         else:
             self.move_x *= -1
             self.move_y *= -1
@@ -253,7 +284,7 @@ class Moving_Platform():
 class Enemy():
     ENEMIES_SPRITES = load_sprites("Enemies","Slime",44,True)
     sprite = ENEMIES_SPRITES["Run_left"]
-    ANIMATION_DELAY = 6
+    ANIMATION_DELAY = 4
     def __init__(self,x,y,move_x,block_num):
         self.img = self.ENEMIES_SPRITES["Run_right"][0]
         self.img_rect = pygame.Rect(x,y+20,50,50)
@@ -264,7 +295,7 @@ class Enemy():
     def move_enemy(self):
         if self.count_distance < 64 * self.block_num:
             self.img_rect.x += self.move_x
-            self.count_distance +=1
+            self.count_distance +=2
         else:
             self.move_x *= -1
             self.count_distance = 0
@@ -285,7 +316,7 @@ class Enemy():
 class Fruit:
     FRUIT_SPRITES = load_sprites("items","Fruits",32,False)
     sprite = FRUIT_SPRITES["Apple"]
-    ANIMATION_DELAY = 6
+    ANIMATION_DELAY = 5
     def __init__(self,x,y):
         self.img = self.FRUIT_SPRITES["Apple"][0]
         self.img_rect = pygame.Rect(x+15,y+20,32,32)
@@ -300,7 +331,7 @@ class Fruit:
 class Checkpoint:
     CHECK_POINT_SPRITES = load_sprites("items","Checkpoint",64,False)
     sprite = CHECK_POINT_SPRITES["Checkpoint"]
-    ANIMATION_DELAY = 6
+    ANIMATION_DELAY = 5
     def __init__(self , x, y):
         self.img = self.CHECK_POINT_SPRITES["Checkpoint"][0]
         self.img_rect = pygame.Rect(x,y+16,32,48)
@@ -352,18 +383,18 @@ class World():
                     self.saw_list.append(tile)
                 if col == 5:
                     #moving platform in x direction
-                    plat = Moving_Platform(j * 64 , i * 64 ,1,0, 2)
+                    plat = Moving_Platform(j * 64 , i * 64 ,2,0, 2)
                     self.plat_list.append(plat)
                 if col == 6:
                     #moving platform in y direction
-                    plat = Moving_Platform(j * 64 , i * 64 ,0,1, 2)
+                    plat = Moving_Platform(j * 64 , i * 64 ,0,2, 2)
                     self.plat_list.append(plat)
                 if col == 7:
                     #moving platform in x and y directions
-                    plat = Moving_Platform(j * 64 , i * 64 ,1,1, 3)
+                    plat = Moving_Platform(j * 64 , i * 64 ,2,2, 3)
                     self.plat_list.append(plat)
                 if col == 8:
-                    enemy = Enemy(j * 64 , i * 64 ,1 , 2)
+                    enemy = Enemy(j * 64 , i * 64 ,2 , 2)
                     self.enemy_list.append(enemy)
                 if col == 9:
                     fruit = Fruit(j * 64 , i * 64)
@@ -413,19 +444,26 @@ def main_menu():
     title_img = pygame.transform.scale(title_img ,(1000,400))
     title_rect = title_img.get_rect()
     title_rect.centerx = WIDTH //2 + 20
+    play_img = pygame.transform.scale(pygame.image.load("assets/Menu/Buttons/Play.png"),(128,128))
+    Play_button = Button(play_img,(WIDTH//2 - 75 , HEIGHT//2 +50))
     loop = True
+    print("HOW TO PLAY:")
+    print("d : move right")
+    print("q : move right")
+    print("space bar : jump")
     while loop:
         clock.tick(FPS)
+        mouse_pos = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_1:
+            if Play_button.is_clicked(mouse_pos):
                     loop = False
                     run()
         draw_background()
         screen.blit(title_img,title_rect)
+        Play_button.draw(screen)
         pygame.display.update()
 def run():
     while True:
