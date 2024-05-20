@@ -224,7 +224,7 @@ class Player():
             if self.lives > 0:
                 self.hearts_list.pop()
             else:
-                print("lost")
+                lost_menu()
             self.hit = True
             self.hit_timer = 120
 
@@ -439,6 +439,7 @@ world_data =[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
 player = Player(50 , HEIGHT - 64)
 trap_group = pygame.sprite.Group()
 world = World(world_data)
+
 def main_menu():
     title_img = pygame.image.load("assets/items/title.png").convert_alpha()
     title_img = pygame.transform.scale(title_img ,(1000,400))
@@ -465,6 +466,32 @@ def main_menu():
         screen.blit(title_img,title_rect)
         Play_button.draw(screen)
         pygame.display.update()
+
+def lost_menu():
+    title_img = pygame.image.load("assets/items/restart.png").convert_alpha()
+    title_img = pygame.transform.scale(title_img ,(1000,400))
+    title_rect = title_img.get_rect()
+    title_rect.centerx = WIDTH //2 + 20
+    restart_img = pygame.transform.scale(pygame.image.load("assets/Menu/Buttons/Restart.png"),(128,128))
+    Restart_button = Button(restart_img,(WIDTH//2 - 75 , HEIGHT//2 +50))
+    loop = True
+    while loop:
+        clock.tick(FPS)
+        mouse_pos = pygame.mouse.get_pos()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if Restart_button.is_clicked(mouse_pos):
+                    loop = False
+                    player.hearts_list=[Heart(17,10),Heart(57,10),Heart(97,10),Heart(137,10)]
+                    player.lives =4
+                    run()
+        draw_background()
+        screen.blit(title_img,title_rect)
+        Restart_button.draw(screen)
+        pygame.display.update()
+        
 def run():
     while True:
         clock.tick(FPS)
