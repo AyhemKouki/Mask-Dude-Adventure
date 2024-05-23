@@ -195,6 +195,16 @@ class Player():
                 self.score += 1
                 world.fruit_list.remove(fruit)
                 self.score_message = font.render(f"{self.score}", True, (255,255,255))
+
+        for end in world.end_list:
+            if self.rect.colliderect(end.img_rect):
+                world.checkpoint_list.clear()
+                world.tile_list.clear()
+                world.enemy_list.clear()
+                world.fruit_list.clear()
+                world.plat_list.clear()
+                world.saw_list.clear()
+                congrats()
         
         if self.win_round():
             world.checkpoint_list.clear()
@@ -342,6 +352,21 @@ class Checkpoint:
         self.animation_count += 1
         screen.blit(self.img ,(self.img_rect.x - 16 , self.img_rect.y - 16))
         #pygame.draw.rect(screen, (255, 255, 255), self.img_rect, 1)
+    
+class End:
+    END_SPRITE = load_sprites("items","end", 64,False)
+    sprite = END_SPRITE["End"]
+    ANIMATION_DELAY = 6
+    def __init__(self , x, y):
+        self.img = self.END_SPRITE["End"][0]
+        self.img_rect = pygame.Rect(x,y+16,32,48)
+        self.animation_count = 0
+    def draw(self):
+        sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(self.END_SPRITE["End"])
+        self.img = self.sprite[sprite_index]
+        self.animation_count += 1
+        screen.blit(self.img ,(self.img_rect.x -16  , self.img_rect.y - 17 ))
+        #pygame.draw.rect(screen, (255, 255, 255), self.img_rect, 1)
 
 class World():
     SAW_SPRITES = load_sprites("Traps","Saw",38,False)
@@ -357,6 +382,7 @@ class World():
         self.enemy_list = []
         self.fruit_list = []
         self.checkpoint_list = []
+        self.end_list = []
         self.animation_count = 0
         self.build_world(data)
     def build_world(self, data):
@@ -402,6 +428,9 @@ class World():
                 if col == 10:
                     checkpoint = Checkpoint(j * 64 , i * 64)
                     self.checkpoint_list.append(checkpoint)
+                if col == 11:
+                    end = End(j * 64 , i * 64)
+                    self.end_list.append(end)
 
     def draw(self):
         sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(self.saw_images)
@@ -424,6 +453,8 @@ class World():
             enemy.draw()
         for checkpoint in self.checkpoint_list:
             checkpoint.draw()
+        for end in self.end_list:
+            end.draw()
 
 world_data =[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
              [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10, 1],
@@ -491,7 +522,26 @@ def lost_menu():
         screen.blit(title_img,title_rect)
         Restart_button.draw(screen)
         pygame.display.update()
-        
+
+def congrats():
+    pygame.font.init()
+    font = pygame.font.SysFont(None, 50)
+    win_message = font.render("Congratulations! You won!", True, (255,255,255))
+    win_message_rect = win_message.get_rect(center=(WIDTH // 2, HEIGHT // 4))
+    score_img = pygame.transform.scale2x(player.score_img)
+    loop = True
+    while loop:
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+        draw_background()
+        screen.blit(win_message,win_message_rect)
+        screen.blit( score_img,(WIDTH // 2 - 100, HEIGHT // 3))
+        screen.blit(player.score_message ,(WIDTH // 2 + 10, HEIGHT // 3 + 50) )
+        pygame.display.update()
+
 def run():
     while True:
         clock.tick(FPS)
