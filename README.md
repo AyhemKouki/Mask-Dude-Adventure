@@ -1,5 +1,9 @@
 # Mask Dude Adventure
 
+
+https://github.com/user-attachments/assets/b3371ca3-1cb4-4910-b623-06695d2a07b7
+
+
 This project is a Python implementation of a platformer game called "Mask Dude Adventure" using the Pygame library. Players control a character, navigating through levels, avoiding traps, collecting fruits, and defeating enemies.
 
 ## Table of Contents
