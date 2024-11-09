@@ -6,10 +6,13 @@ from Levels import all_levels
 WIDTH ,HEIGHT = 1024 , 640
 FPS = 60
 
+pygame.init()
+pygame.mixer.init()
 pygame.font.init()
 font = pygame.font.SysFont(None, 40)
 
 clock = pygame.time.Clock()
+pygame.display.set_icon(pygame.image.load("assets/Main Characters/Mask Dude/Fall.png"))
 pygame.display.set_caption("Mask Dude Adventure")
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
@@ -71,6 +74,8 @@ class Heart:
 
 class Player():
     SPRITES = load_sprites("Main Characters","Mask Dude",32,True)
+    Jump_sfx = pygame.mixer.Sound("sounds/Jump_SFX.mp3")
+    Jump_sfx.set_volume(0.02)
     ANIMATION_DELAY = 3
     GRAVITY = 0.3 
     MAX_FALL_SPEED = 6
@@ -137,6 +142,7 @@ class Player():
             self.direction = "left"
             x_vel = -4
         if press[pygame.K_SPACE] and self.jump_count == 0:
+            pygame.mixer.Sound.play(self.Jump_sfx)
             self.jump_count = 1
             self.dy = -9
 
@@ -171,7 +177,7 @@ class Player():
                         y_vel = 0 
                         self.jump_count = 0
                         if x_vel == 0:
-                            x_vel = plat.move_x
+                            x_vel += plat.move_x
                 #consider that y_vel= -9 and platformer height=19 so max diff between them will be 11
                 elif y_vel < 0 :
                     if abs((self.rect.top + y_vel)-plat.img_rect.bottom)< 11:
@@ -359,7 +365,7 @@ class End:
     ANIMATION_DELAY = 6
     def __init__(self , x, y):
         self.img = self.END_SPRITE["End"][0]
-        self.img_rect = pygame.Rect(x,y+16,32,48)
+        self.img_rect = pygame.Rect(x+16,y+16,32,48)
         self.animation_count = 0
     def draw(self):
         sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(self.END_SPRITE["End"])
