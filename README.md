@@ -23,8 +23,8 @@ This project is a Python implementation of a platformer game called "Mask Dude A
 1. To get started, clone the repository:
 
 ```bash
-git clone https://github.com/AyhemKouki/MaskDudeAdventure.git
-cd MaskDudeAdventure
+git clone https://github.com/AyhemKouki/Mask-Dude-Adventure.git
+cd Mask-Dude-Adventure
 ```
 2. Install the dependencies:
     ```bash
