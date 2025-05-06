@@ -12,7 +12,7 @@ pygame.font.init()
 font = pygame.font.SysFont(None, 40)
 
 clock = pygame.time.Clock()
-pygame.display.set_icon(pygame.image.load("assets/Main Characters/Mask Dude/Fall.png"))
+pygame.display.set_icon(pygame.image.load("assets/icon.png"))
 pygame.display.set_caption("Mask Dude Adventure")
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
@@ -35,20 +35,19 @@ def load_sprites(folder1 , folder2 , x , test_direction):
             sprite_sheets[image.replace(".png","")] = sprites
     return sprite_sheets
 
-def get_background():
-    background_image = pygame.image.load("assets/Background/Brown.png")
+def get_background(background_image):
     _,_,width,height = background_image.get_rect()
     positions=[]
     for i in range(WIDTH//width + 1):
         for j in range(HEIGHT//height + 1):
             pos=(i*width ,j*height)
             positions.append(pos)
-    return positions , background_image
+    return positions
 
-def draw_background():
-    positions , back_image = get_background()
+def draw_background(background_image):
+    positions = get_background(background_image)
     for position in positions:
-        screen.blit(back_image , position)
+        screen.blit(background_image, position)
 
 class Button:
     def __init__(self, image, position):
@@ -462,6 +461,51 @@ class World():
         for end in self.end_list:
             end.draw()
 
+class SkinSelector:
+    SKINS = {
+        "Mask Dude": "Main Characters/Mask Dude",
+        "Ninja Frog": "Main Characters/Ninja Frog",
+        "Pink Man": "Main Characters/Pink Man",
+        "Virtual Guy": "Main Characters/Virtual Guy"
+    }
+    
+    def __init__(self):
+        self.current_skin = "Mask Dude"
+        self.animation_count = 0
+        self.sprites = {}
+        self.load_all_skins()
+        
+    def load_all_skins(self):
+        for skin_name, path in self.SKINS.items():
+            self.sprites[skin_name] = load_sprites(path, "", 32, True)
+    
+    def draw_preview(self, x, y):
+        images = self.sprites[self.current_skin]["Run_right"]
+        sprite_index = (self.animation_count // 3) % len(images)
+        sprite = images[sprite_index]
+        self.animation_count += 1
+        return sprite, sprite.get_rect(center=(x, y))
+
+class BackgroundSelector:
+    BACKGROUNDS = {
+        "Blue": "assets/Background/Blue.png",
+        "Brown": "assets/Background/Brown.png",
+        "Gray": "assets/Background/Gray.png",
+        "Green": "assets/Background/Green.png",
+        "Pink": "assets/Background/Pink.png",
+        "Purple": "assets/Background/Purple.png",
+        "Yellow": "assets/Background/Yellow.png"
+    }
+    
+    def __init__(self):
+        self.current_bg = "Brown"
+        self.backgrounds = {}
+        self.load_backgrounds()
+        
+    def load_backgrounds(self):
+        for bg_name, path in self.BACKGROUNDS.items():
+            self.backgrounds[bg_name] = pygame.image.load(path)
+
 world_data =[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1],
              [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10, 1],
              [0,0,0,0,1,1,0,4,1,1,1,0,0,4,1,1, 1],
@@ -478,12 +522,21 @@ trap_group = pygame.sprite.Group()
 world = World(world_data)
 
 def main_menu():
+    global bg_selector
     title_img = pygame.image.load("assets/items/title.png").convert_alpha()
     title_img = pygame.transform.scale(title_img ,(1000,400))
     title_rect = title_img.get_rect()
     title_rect.centerx = WIDTH //2 + 20
-    play_img = pygame.transform.scale(pygame.image.load("assets/Menu/Buttons/Play.png"),(128,128))
-    Play_button = Button(play_img,(WIDTH//2 - 75 , HEIGHT//2 +50))
+    title_rect.centery = HEIGHT // 4 - 30
+
+    play_img = pygame.transform.scale(pygame.image.load("assets/Menu/Buttons/Play.png"),(64,64))
+    Play_button = Button(play_img,(WIDTH//2 - play_img.get_width()//2  , HEIGHT//2 + play_img.get_height()//2))
+
+    skin_selector = SkinSelector()
+    bg_selector = BackgroundSelector()
+    show_skin_menu = False
+    show_bg_menu = False
+
     loop = True
     print("HOW TO PLAY:")
     print("d : move right")
@@ -493,15 +546,83 @@ def main_menu():
         clock.tick(FPS)
         mouse_pos = pygame.mouse.get_pos()
         for event in pygame.event.get():
+            if Play_button.is_clicked(mouse_pos) and not show_skin_menu and not show_bg_menu:
+                loop = False
+                run()
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if Play_button.is_clicked(mouse_pos):
-                    loop = False
-                    run()
-        draw_background()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if not show_skin_menu and not show_bg_menu:
+                    # Check if clicked on running character
+                    sprite, sprite_rect = skin_selector.draw_preview(WIDTH//2 - play_img.get_width()//2 + 30, HEIGHT//2 + play_img.get_height()//2 +120)
+                    if sprite_rect.collidepoint(mouse_pos):
+                        show_skin_menu = True
+                    # Check if clicked on background preview
+                    bg_rect = pygame.Rect(WIDTH//2 - play_img.get_width()//2 - 102, HEIGHT//2 + play_img.get_height()//2 +88, 64, 64)
+                    if bg_rect.collidepoint(mouse_pos):
+                        show_bg_menu = True
+                elif show_skin_menu:
+                    # Handle skin selection
+                    y_pos = HEIGHT//4 + 150
+                    for skin_name in skin_selector.SKINS:
+                        rect = pygame.Rect(WIDTH//2 - 100, y_pos, 200, 50)
+                        if rect.collidepoint(mouse_pos):
+                            skin_selector.current_skin = skin_name
+                            player.SPRITES = load_sprites(skin_selector.SKINS[skin_name], "", 32, True)
+                            show_skin_menu = False
+                        y_pos += 60
+                elif show_bg_menu:
+                    # Handle background selection
+                    y_pos = HEIGHT//4 + 70
+                    for bg_name in bg_selector.BACKGROUNDS:
+                        rect = pygame.Rect(WIDTH//2 - 100, y_pos, 200, 40)
+                        if rect.collidepoint(mouse_pos):
+                            bg_selector.current_bg = bg_name
+                            show_bg_menu = False
+                        y_pos += 60
+
+        draw_background(bg_selector.backgrounds[bg_selector.current_bg])
         screen.blit(title_img,title_rect)
-        Play_button.draw(screen)
+        
+        if not show_skin_menu and not show_bg_menu:
+            # Draw running character preview
+            sprite, sprite_rect = skin_selector.draw_preview(WIDTH//2 - play_img.get_width()//2 + 30, HEIGHT//2 + play_img.get_height()//2 +120)
+            screen.blit(sprite, sprite_rect)
+            
+            # Draw background preview with larger size and border
+            bg_preview = pygame.transform.scale(bg_selector.backgrounds[bg_selector.current_bg], (64, 64))  # Increased size to 96x96
+            bg_rect = bg_preview.get_rect(center=(WIDTH//2 - play_img.get_width()//2 - 70, HEIGHT//2 + play_img.get_height()//2 +120))
+            # Draw white border
+            pygame.draw.rect(screen, (255, 255, 255), bg_rect.inflate(4, 4), 2)  # Add 2px white border
+            screen.blit(bg_preview, bg_rect)
+            
+            Play_button.draw(screen)
+        elif show_skin_menu:
+            # Draw skin selection menu
+            y_pos = HEIGHT//4 + 150
+            for skin_name in skin_selector.SKINS:
+                rect = pygame.Rect(WIDTH//2 - 100, y_pos, 200, 50)
+                pygame.draw.rect(screen, (100, 100, 100), rect)
+                if skin_name == skin_selector.current_skin:
+                    pygame.draw.rect(screen, (200, 200, 200), rect, 3)
+                text = font.render(skin_name, True, (255, 255, 255))
+                text_rect = text.get_rect(center=(WIDTH//2, y_pos + 25))
+                screen.blit(text, text_rect)
+                y_pos += 60
+        elif show_bg_menu:
+            # Draw background selection menu
+            y_pos = HEIGHT//4 + 70
+            for bg_name in bg_selector.BACKGROUNDS:
+                rect = pygame.Rect(WIDTH//2 - 100, y_pos, 200, 40)
+                pygame.draw.rect(screen, (100, 100, 100), rect)
+                if bg_name == bg_selector.current_bg:
+                    pygame.draw.rect(screen, (200, 200, 200), rect, 3)
+                text = font.render(bg_name, True, (255, 255, 255))
+                text_rect = text.get_rect(center=(WIDTH//2, y_pos + 20))
+                screen.blit(text, text_rect)
+                y_pos += 60
+                
         pygame.display.update()
 
 def lost_menu():
@@ -511,6 +632,7 @@ def lost_menu():
     title_rect.centerx = WIDTH //2 + 20
     restart_img = pygame.transform.scale(pygame.image.load("assets/Menu/Buttons/Restart.png"),(128,128))
     Restart_button = Button(restart_img,(WIDTH//2 - 75 , HEIGHT//2 +50))
+    bg_image = bg_selector.backgrounds[bg_selector.current_bg]
     loop = True
     while loop:
         clock.tick(FPS)
@@ -524,7 +646,7 @@ def lost_menu():
                     player.hearts_list=[Heart(17,10),Heart(57,10),Heart(97,10),Heart(137,10)]
                     player.lives =4
                     run()
-        draw_background()
+        draw_background(bg_image)
         screen.blit(title_img,title_rect)
         Restart_button.draw(screen)
         pygame.display.update()
@@ -535,6 +657,7 @@ def congrats():
     win_message = font.render("Congratulations! You won!", True, (255,255,255))
     win_message_rect = win_message.get_rect(center=(WIDTH // 2, HEIGHT // 4))
     score_img = pygame.transform.scale2x(player.score_img)
+    bg_image = bg_selector.backgrounds[bg_selector.current_bg]
     loop = True
     while loop:
         clock.tick(FPS)
@@ -542,13 +665,14 @@ def congrats():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-        draw_background()
+        draw_background(bg_image)
         screen.blit(win_message,win_message_rect)
         screen.blit( score_img,(WIDTH // 2 - 100, HEIGHT // 3))
         screen.blit(player.score_message ,(WIDTH // 2 + 10, HEIGHT // 3 + 50) )
         pygame.display.update()
 
 def run():
+    bg_image = bg_selector.backgrounds[bg_selector.current_bg]
     while True:
         clock.tick(FPS)
         for event in pygame.event.get():
@@ -560,7 +684,7 @@ def run():
                     player.animation_count = 0
                 if event.key == pygame.K_q:
                     player.animation_count = 0
-        draw_background()
+        draw_background(bg_image)
         trap_group.draw(screen)
         world.draw()
         player.move_player()
